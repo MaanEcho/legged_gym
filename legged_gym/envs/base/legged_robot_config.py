@@ -41,28 +41,50 @@ class LeggedRobotCfg(BaseConfig):
         episode_length_s = 20 # episode length in seconds
 
     class terrain:
+        # 地形网络类型：'trimesh'(三角形网络)，可选值包括：'none'(无地形)，'plane'(平面)，'heightfield'(高度场)，'trimesh'。
         mesh_type = 'trimesh' # "heightfield" # none, plane, heightfield or trimesh
+        # 水平缩放比例，单位：米
         horizontal_scale = 0.1 # [m]
+        # 垂直缩放比例，单位：米
         vertical_scale = 0.005 # [m]
+        # 边界大小，单位：米
         border_size = 25 # [m]
+        # 是否应用课程学习方法
         curriculum = True
+        # 静摩擦系数
         static_friction = 1.0
+        # 动摩擦系数
         dynamic_friction = 1.0
+        # 弹性恢复系数
         restitution = 0.
+        # 仅粗糙地形相关：
         # rough terrain only:
+        # 是否测量高度：
         measure_heights = True
+        # 在1mx1.6m矩形区域内测量的点的x坐标（不包括中心线）
         measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
+        # 测量的点的y坐标（不包括中心线）（在1mx1.6m矩形区域内）
         measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
+        # 是否选择唯一的地形类型并传递所有参数
         selected = False # select a unique terrain type and pass all arguments
+        # 为所选地形类型指定的参数字典
         terrain_kwargs = None # Dict of arguments for selected terrain
+        # 课程学习开始的最大初始地形登记
         max_init_terrain_level = 5 # starting curriculum state
+        # 地形长度，单位：米
         terrain_length = 8.
+        # 地形宽度，单位：米
         terrain_width = 8.
+        # 地形行数（等级）
         num_rows= 10 # number of terrain rows (levels)
+        # 地形列数（类型）
         num_cols = 20 # number of terrain cols (types)
+        # 地形类型：[平滑斜坡，粗糙斜坡，楼梯上，楼梯下，离散]
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
         terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2]
+        # trimesh(三角形地形)仅适用：
         # trimesh only:
+        # 斜坡阈值，高于此阈值的斜坡将被修正为垂直表面
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
 
     class commands:
