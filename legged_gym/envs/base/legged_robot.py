@@ -1,36 +1,11 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: BSD-3-Clause
-# 
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# Copyright (c) 2021 ETH Zurich, Nikita Rudin
-
+# An env file
 from legged_gym import LEGGED_GYM_ROOT_DIR, envs
+# 这里legged_gym是配置anaconda虚拟环境时通过pip install -e .命令安装的包，也就是这个项目中的legged_gym文件夹；而envs是这个包的子包，即legged_gym/legged_gym/envs
 from time import time
+# time 函数返回当前时间的时间戳，可以用于各种时间相关的操作，例如：记录程序执行的时间点，计算程序运行的时间间隔，在日志中记录事件发生的时间。
+
 from warnings import WarningMessage
+# WarningMessage 是一个警告类，用于警告用户代码中的潜在问题。
 import numpy as np
 import os
 
@@ -62,19 +37,38 @@ class LeggedRobot(BaseTask):
             device_id (int): 0, 1, ...
             headless (bool): Run without rendering if True
         """
+        """ 解析提供的配置文件，调用create sim()(创建仿真、地形和环境)，初始化训练期间使用的pytorch缓冲区
+
+        参数：
+            cfg (Dict): 环境配置文件
+            sim_params (gymapi.SimParams): 仿真参数
+            physics_engine (gymapi.SimType): gymapi.SIM_PHYSX (必须为PhysX)
+            device_type (string): 'cuda'或'cpu'
+            device_id (int): 0、1、...
+            headless (bool): 如果为True，则不渲染
+        """
         self.cfg = cfg
         self.sim_params = sim_params
         self.height_samples = None
+        # 高程图采样？
         self.debug_viz = False
+        # ？
         self.init_done = False
+        # ？
         self._parse_cfg(self.cfg)
+        # 已出现
         super().__init__(self.cfg, sim_params, physics_engine, sim_device, headless)
 
         if not self.headless:
+        # 如果选择无头模式（，则调用set_camera()函数设置相机位置和视角）(GPT生成)
             self.set_camera(self.cfg.viewer.pos, self.cfg.viewer.lookat)
+            # 已出现
         self._init_buffers()
+        # 已出现
         self._prepare_reward_function()
+        # 已出现
         self.init_done = True
+        # 初始化完成
 
     def step(self, actions):
         """ Apply actions, simulate, call self.post_physics_step()
@@ -82,51 +76,84 @@ class LeggedRobot(BaseTask):
         Args:
             actions (torch.Tensor): Tensor of shape (num_envs, num_actions_per_env)
         """
+        """ 执行动作，模拟，调用self.post_physics_step()
+
+        参数：
+            actions (torch.Tensor): 形状为(num_envs, num_actions_per_env)的张量
+        """
         clip_actions = self.cfg.normalization.clip_actions
+        # clip_actions是动作的最大值和最小值
         self.actions = torch.clip(actions, -clip_actions, clip_actions).to(self.device)
+        # 这句代码的作用是将输入的动作张量actions中的每个元素限制在-clip_actions和clip_actions之间，然后将结果张量移动到指定的设备（例如GPU），并将其赋值给self.actions。
         # step physics and render each frame
-        self.render()
+        # 仿真和渲染每个帧
+        self.render()   # 已出现
         for _ in range(self.cfg.control.decimation):
-            self.torques = self._compute_torques(self.actions).view(self.torques.shape)
+            self.torques = self._compute_torques(self.actions).view(self.torques.shape) # 已出现
+            # ?
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))
+            # ？
             self.gym.simulate(self.sim)
+            # ?
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
+                # ？
             self.gym.refresh_dof_state_tensor(self.sim)
-        self.post_physics_step()
+            # ？
+        self.post_physics_step()    # 已出现
+        # ？
 
         # return clipped obs, clipped states (None), rewards, dones and infos
+        # 返回裁剪后的观测、裁剪后的状态（None）、奖励、终止信号和信息
         clip_obs = self.cfg.normalization.clip_observations
+        # clip_obs是观测的最大值和最小值
         self.obs_buf = torch.clip(self.obs_buf, -clip_obs, clip_obs)
+        # 这句代码的作用是将self.obs_buf中的每个元素限制在-clip_obs和clip_obs之间，并将结果张量赋值给self.obs_buf。
         if self.privileged_obs_buf is not None:
+        # 如果存在特权观测，则将其裁剪
             self.privileged_obs_buf = torch.clip(self.privileged_obs_buf, -clip_obs, clip_obs)
+            # 这句代码的作用是将self.privileged_obs_buf中的每个元素限制在-clip_obs和clip_obs之间，并将结果张量赋值给self.privileged_obs_buf。
         return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras
+        # 返回裁剪后的观测、裁剪后的特权观测、奖励、重置信号和额外信息
 
-    def post_physics_step(self):
+    def post_physics_step(self):    # 已出现
         """ check terminations, compute observations and rewards
             calls self._post_physics_step_callback() for common computations 
             calls self._draw_debug_vis() if needed
         """
+        """ 检查终止条件，计算观测和奖励，
+            调用self._post_physics_step_callback()进行通用计算，
+            如果需要，则调用self._draw_debug_vis()
+        """
         self.gym.refresh_actor_root_state_tensor(self.sim)
+        # ？
         self.gym.refresh_net_contact_force_tensor(self.sim)
+        # ？
 
         self.episode_length_buf += 1
+        # ？
         self.common_step_counter += 1
+        # ？
 
         # prepare quantities
+        # 准备量
         self.base_quat[:] = self.root_states[:, 3:7]
         self.base_lin_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity[:] = quat_rotate_inverse(self.base_quat, self.gravity_vec)
 
-        self._post_physics_step_callback()
+        self._post_physics_step_callback()  # 已出现
 
         # compute observations, rewards, resets, ...
-        self.check_termination()
-        self.compute_reward()
+        # 计算观测、奖励、重置等
+        self.check_termination()    # 已出现
+        self.compute_reward()   # 已出现
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
-        self.reset_idx(env_ids)
+        # ？
+        self.reset_idx(env_ids) # 已出现
         self.compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
+        # 在某些情况下，可能需要模拟一步才能刷新一些观测（例如身体位置）。
+        # 已出现
 
         self.last_actions[:] = self.actions[:]
         self.last_dof_vel[:] = self.dof_vel[:]
@@ -135,14 +162,17 @@ class LeggedRobot(BaseTask):
         if self.viewer and self.enable_viewer_sync and self.debug_viz:
             self._draw_debug_vis()
 
-    def check_termination(self):
+    def check_termination(self):    # 已出现
         """ Check if environments need to be reset
+        """
+        """ 检查环境是否需要重置
         """
         self.reset_buf = torch.any(torch.norm(self.contact_forces[:, self.termination_contact_indices, :], dim=-1) > 1., dim=1)
         self.time_out_buf = self.episode_length_buf > self.max_episode_length # no terminal reward for time-outs
+        # 对于超时，没有奖励，只终止
         self.reset_buf |= self.time_out_buf
 
-    def reset_idx(self, env_ids):
+    def reset_idx(self, env_ids):   # 已出现
         """ Reset some environments.
             Calls self._reset_dofs(env_ids), self._reset_root_states(env_ids), and self._resample_commands(env_ids)
             [Optional] calls self._update_terrain_curriculum(env_ids), self.update_command_curriculum(env_ids) and
@@ -151,6 +181,11 @@ class LeggedRobot(BaseTask):
 
         Args:
             env_ids (list[int]): List of environment ids which must be reset
+        """
+        """ 重置一些环境。
+            调用self._reset_dofs(env_ids)，self._reset_root_states(env_ids)和self._resample_commands(env_ids)
+            [可选]调用self._update_terrain_curriculum(env_ids)，self.update_command_curriculum(env_ids)和
+            记录回合信息
         """
         if len(env_ids) == 0:
             return
@@ -187,7 +222,7 @@ class LeggedRobot(BaseTask):
         if self.cfg.env.send_timeouts:
             self.extras["time_outs"] = self.time_out_buf
     
-    def compute_reward(self):
+    def compute_reward(self):   # 已出现
         """ Compute rewards
             Calls each reward function which had a non-zero scale (processed in self._prepare_reward_function())
             adds each terms to the episode sums and to the total reward
@@ -206,7 +241,7 @@ class LeggedRobot(BaseTask):
             self.rew_buf += rew
             self.episode_sums["termination"] += rew
     
-    def compute_observations(self):
+    def compute_observations(self): # 已出现
         """ Computes observations
         """
         self.obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,
@@ -243,7 +278,7 @@ class LeggedRobot(BaseTask):
             raise ValueError("Terrain mesh type not recognised. Allowed types are [None, plane, heightfield, trimesh]")
         self._create_envs()
 
-    def set_camera(self, position, lookat):
+    def set_camera(self, position, lookat): # 已出现
         """ Set camera position and direction
         """
         cam_pos = gymapi.Vec3(position[0], position[1], position[2])
@@ -251,6 +286,7 @@ class LeggedRobot(BaseTask):
         self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
 
     #------------- Callbacks --------------
+    #---------------回调函数----------------
     def _process_rigid_shape_props(self, props, env_id):
         """ Callback allowing to store/change/randomize the rigid shape properties of each environment.
             Called During environment creation.
@@ -317,7 +353,7 @@ class LeggedRobot(BaseTask):
             props[0].mass += np.random.uniform(rng[0], rng[1])
         return props
     
-    def _post_physics_step_callback(self):
+    def _post_physics_step_callback(self):  # 已出现
         """ Callback called before computing terminations, rewards, and observations
             Default behaviour: Compute ang vel command based on target and heading, compute measured terrain heights and randomly push robots
         """
@@ -350,7 +386,7 @@ class LeggedRobot(BaseTask):
         # set small commands to zero
         self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
 
-    def _compute_torques(self, actions):
+    def _compute_torques(self, actions):    # 已出现
         """ Compute torques from actions.
             Actions can be interpreted as position or velocity targets given to a PD controller, or directly as scaled torques.
             [NOTE]: torques must have the same dimension as the number of DOFs, even if some DOFs are not actuated.
@@ -478,7 +514,8 @@ class LeggedRobot(BaseTask):
         return noise_vec
 
     #----------------------------------------
-    def _init_buffers(self):
+    def _init_buffers(self):    # 已出现
+
         """ Initialize torch tensors which will contain simulation states and processed quantities
         """
         # get gym GPU state tensors
@@ -541,7 +578,7 @@ class LeggedRobot(BaseTask):
                     print(f"PD gain of joint {name} were not defined, setting them to zero")
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
 
-    def _prepare_reward_function(self):
+    def _prepare_reward_function(self): # 已出现
         """ Prepares a list of reward functions, whcih will be called to compute the total reward.
             Looks for self._reward_<REWARD_NAME>, where <REWARD_NAME> are names of all non zero reward scales in the cfg.
         """
@@ -725,7 +762,7 @@ class LeggedRobot(BaseTask):
             self.env_origins[:, 1] = spacing * yy.flatten()[:self.num_envs]
             self.env_origins[:, 2] = 0.
 
-    def _parse_cfg(self, cfg):
+    def _parse_cfg(self, cfg):  # 已出现
         self.dt = self.cfg.control.decimation * self.sim_params.dt
         self.obs_scales = self.cfg.normalization.obs_scales
         self.reward_scales = class_to_dict(self.cfg.rewards.scales)
@@ -737,7 +774,7 @@ class LeggedRobot(BaseTask):
 
         self.cfg.domain_rand.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
 
-    def _draw_debug_vis(self):
+    def _draw_debug_vis(self):  # 已出现
         """ Draws visualizations for dubugging (slows down simulation a lot).
             Default behaviour: draws height measurement points
         """
@@ -812,7 +849,8 @@ class LeggedRobot(BaseTask):
 
         return heights.view(self.num_envs, -1) * self.terrain.cfg.vertical_scale
 
-    #------------ reward functions----------------
+    #-------------reward functions----------------
+    #------------------奖励函数--------------------
     def _reward_lin_vel_z(self):
         # Penalize z axis base linear velocity
         return torch.square(self.base_lin_vel[:, 2])
