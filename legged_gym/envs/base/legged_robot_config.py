@@ -4,71 +4,100 @@ from .base_config import BaseConfig
 class LeggedRobotCfg(BaseConfig):   # 包含所有的环境参数
     class env:
         num_envs = 4096
+        # 环境数量
         num_observations = 235
-        num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
+        # 观测空间维度
+        num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise
+        # 特权观测空间维度
+        # 如果num_privileged_obs不为None，则在step()函数中返回特权观测空间priviledge_obs_buf（用于不对称训练的critic观测）。否则，返回None。
         num_actions = 12
+        # 动作空间维度
         env_spacing = 3.  # not used with heightfields/trimeshes 
+        # 环境间隔，单位：米？
+        # 地形为heightfield或trimesh时，此参数无效(不使用)
         send_timeouts = True # send time out information to the algorithm
+        # 是否发送超时信息到算法
+        # 发送超时信息到算法，以便在超时时终止episode
         episode_length_s = 20 # episode length in seconds
+        # 单个episode的长度，单位：秒
 
     class terrain:
-        # 地形网络类型：'trimesh'(三角形网络)，可选值包括：'none'(无地形)，'plane'(平面)，'heightfield'(高度场)，'trimesh'。
         mesh_type = 'trimesh' # "heightfield" # none, plane, heightfield or trimesh
-        # 水平缩放比例，单位：米
+        # 地形网格类型，可选值：'none'(无地形)，'plane'(平面)，'heightfield'(高度场)，'trimesh'。
         horizontal_scale = 0.1 # [m]
-        # 垂直缩放比例，单位：米
+        # 水平缩放比例，单位：米
         vertical_scale = 0.005 # [m]
-        # 边界大小，单位：米
+        # 垂直缩放比例，单位：米
         border_size = 25 # [m]
-        # 是否应用课程学习方法
+        # 边界大小，单位：米
         curriculum = True
-        # 静摩擦系数
+        # 是否应用课程学习方法
         static_friction = 1.0
-        # 动摩擦系数
+        # 静态摩擦系数
         dynamic_friction = 1.0
-        # 弹性恢复系数
+        # 动态摩擦系数
         restitution = 0.
-        # 仅粗糙地形相关：
+        # 恢复系数
+
         # rough terrain only:
-        # 是否测量高度：
+        # 仅粗糙地形适用：
         measure_heights = True
-        # 在1mx1.6m矩形区域内测量的点的x坐标（不包括中心线）
+        # 是否测量高度
         measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
-        # 测量的点的y坐标（不包括中心线）（在1mx1.6m矩形区域内）
+        # 高度测量点在x方向上的相对位置，相对于地形的中心线
+        # 1mx1.6m矩形（不含中心线）
         measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
-        # 是否选择唯一的地形类型并传递所有参数
+        # 高度测量点在y方向上的相对位置，相对于地形的中心线
+        # 1mx1.6m矩形（不含中心线）
         selected = False # select a unique terrain type and pass all arguments
-        # 为所选地形类型指定的参数字典
+        # 是否选择特定的地形类型并传递所有参数
+        # 选择特定的地形类型并传递所有参数
         terrain_kwargs = None # Dict of arguments for selected terrain
-        # 课程学习开始的最大初始地形登记
+        # 选定的地形类型的参数字典
         max_init_terrain_level = 5 # starting curriculum state
-        # 地形长度，单位：米
+        # 课程学习开始时，最大初始地形等级
+        # 开始课程学习状态
         terrain_length = 8.
-        # 地形宽度，单位：米
+        # 地形长度，单位：米？
         terrain_width = 8.
-        # 地形行数（等级）
+        # 地形宽度，单位：米？
         num_rows= 10 # number of terrain rows (levels)
-        # 地形列数（类型）
+        # 地形行数（等级）的数量
         num_cols = 20 # number of terrain cols (types)
-        # 地形类型：[平滑斜坡，粗糙斜坡，楼梯上，楼梯下，离散]
+        # 地形列数（类型）的数量
+        # 总结：等级X类型
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
+        # 地形类型：[平滑坡度，粗糙坡度，楼梯上升，楼梯下降，离散]
         terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2]
-        # trimesh(三角形地形)仅适用：
+        # 地形比例：[平滑坡度，粗糙坡度，楼梯上升，楼梯下降，离散]
+
         # trimesh only:
-        # 斜坡阈值，高于此阈值的斜坡将被修正为垂直表面
+        # 仅trimesh适用：
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
+        # 坡度阈值，超过此阈值的坡度将被修正为垂直表面
 
     class commands:
         curriculum = False
+        # 是否应用课程学习方法
         max_curriculum = 1.
+        # 最大课程?
         num_commands = 4 # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
+        # 命令数量，默认：x方向线速度，y方向线速度，z轴角速度，航向角（航向模式下，z轴角速度由航向误差计算得到）
         resampling_time = 10. # time before command are changed[s]
+        # 命令重采样时间，单位：秒
+        # 重采样时间内，命令将保持不变
         heading_command = True # if true: compute ang vel command from heading error
+        # 是否使用航向角作为命令
+        # 如果为True，则根据航向误差计算z轴角速度命令
         class ranges:
             lin_vel_x = [-1.0, 1.0] # min max [m/s]
+            # x方向线速度范围，单位：米/秒
             lin_vel_y = [-1.0, 1.0]   # min max [m/s]
+            # y方向线速度范围，单位：米/秒
             ang_vel_yaw = [-1, 1]    # min max [rad/s]
+            # z轴角速度范围，单位：弧度/秒
             heading = [-3.14, 3.14]
+            # 航向角范围，单位：弧度
 
     class init_state:
         pos = [0.0, 0.0, 1.] # x,y,z [m]
