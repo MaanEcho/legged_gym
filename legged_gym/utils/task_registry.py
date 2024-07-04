@@ -1,33 +1,3 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: BSD-3-Clause
-# 
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# Copyright (c) 2021 ETH Zurich, Nikita Rudin
-
 import os
 from datetime import datetime
 from typing import Tuple
@@ -44,8 +14,11 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 class TaskRegistry():
     def __init__(self):
         self.task_classes = {}
+        # 任务类别
         self.env_cfgs = {}
+        # 环境配置
         self.train_cfgs = {}
+        # 训练配置
     
     def register(self, name: str, task_class: VecEnv, env_cfg: LeggedRobotCfg, train_cfg: LeggedRobotCfgPPO):   # *
         self.task_classes[name] = task_class
@@ -59,11 +32,12 @@ class TaskRegistry():
         train_cfg = self.train_cfgs[name]
         env_cfg = self.env_cfgs[name]
         # copy seed
+        # 拷贝随机种子
         env_cfg.seed = train_cfg.seed
         return env_cfg, train_cfg
     
     def make_env(self, name, args=None, env_cfg=None) -> Tuple[VecEnv, LeggedRobotCfg]:
-        """ Creates an environment either from a registered namme or from the provided config file.
+        """ Creates an environment either from a registered name or from the provided config file.
 
         Args:
             name (string): Name of a registered env.
@@ -77,21 +51,40 @@ class TaskRegistry():
             isaacgym.VecTaskPython: The created environment
             Dict: the corresponding config file
         """
+        """ 从一个已注册的名称或提供的配置文件创建一个环境。
+        
+        参数：
+            name (string): 注册环境的名称。
+            args (Args, optional): Isaac Gym命令行参数。如果为None，则调用get_args()。默认值为None。
+            env_cfg (Dict, optional): 用于覆盖注册配置的环境配置文件。默认值为None。
+
+        异常：
+            ValueError: 如果没有注册的环境与'name'对应
+
+        返回：
+            isaacgym.VecTaskPython: 创建的环境
+            Dict: 对应的配置文件
+        """
         # if no args passed get command line arguments
+        # 如果没有传递args，则获取命令行参数
         if args is None:
             args = get_args()
         # check if there is a registered env with that name
+        # 检查是否有注册的环境与该名称对应
         if name in self.task_classes:
             task_class = self.get_task_class(name)
         else:
             raise ValueError(f"Task with name: {name} was not registered")
         if env_cfg is None:
             # load config files
+            # 加载配置文件
             env_cfg, _ = self.get_cfgs(name)
         # override cfg from args (if specified)
+        # 从args（等价于命令行参数？）中覆盖配置（如果指定了）
         env_cfg, _ = update_cfg_from_args(env_cfg, None, args)
         set_seed(env_cfg.seed)
         # parse sim params (convert to dict first)
+        # 解析模拟参数（首先转换为字典）
         sim_params = {"sim": class_to_dict(env_cfg.sim)}
         sim_params = parse_sim_params(args, sim_params)
         env = task_class(   cfg=env_cfg,
@@ -120,19 +113,40 @@ class TaskRegistry():
             PPO: The created algorithm
             Dict: the corresponding config file
         """
+        """ 从已注册的名称或提供的配置文件创建一个训练算法。
+        
+        参数：
+            env (isaacgym.VecTaskPython): 训练环境（TODO：从算法内部移除）
+            name (string, optional): 注册环境的名称。如果为None，则使用配置文件。默认值为None。
+            args (Args, optional): Isaac Gym命令行参数。如果为None，则调用get_args()。默认值为None。
+            train_cfg (Dict, optional): 训练配置文件。如果为None，则使用'name'获取配置文件。默认值为None。
+            log_root (str, optional): Tensorboard日志目录。设置为'None'以避免日志记录（例如在测试时）。日志将保存在<log_root>/<date_time>_<run_name>中。默认值为"default"=<path_to_LEGGED_GYM>/logs/<experiment_name>。
+
+        异常：
+            ValueError: 如果'name'和'train_cfg'都未提供
+            Warning: 如果'name'和'train_cfg'都提供，则'name'被忽略
+
+        返回：
+            PPO: 创建的算法
+            Dict: 对应的配置文件
+        """
         # if no args passed get command line arguments
+        # 如果没有传递args，则获取命令行参数
         if args is None:
             args = get_args()
         # if config files are passed use them, otherwise load from the name
+        # 如果配置文件被传递，则使用它们，否则从name加载
         if train_cfg is None:
             if name is None:
                 raise ValueError("Either 'name' or 'train_cfg' must be not None")
             # load config files
+            # 加载配置文件
             _, train_cfg = self.get_cfgs(name)
         else:
             if name is not None:
                 print(f"'train_cfg' provided -> Ignoring 'name={name}'")
         # override cfg from args (if specified)
+        # 从args（等价于命令行参数？）中覆盖配置（如果指定了）
         _, train_cfg = update_cfg_from_args(None, train_cfg, args)
 
         if log_root=="default":
@@ -145,14 +159,17 @@ class TaskRegistry():
         
         train_cfg_dict = class_to_dict(train_cfg)
         runner = OnPolicyRunner(env, train_cfg_dict, log_dir, device=args.rl_device)
-        #save resume path before creating a new log_dir
+        # save resume path before creating a new log_dir
+        # 创建新的日志目录之前保存恢复路径
         resume = train_cfg.runner.resume
         if resume:
             # load previously trained model
+            # 加载先前训练的模型
             resume_path = get_load_path(log_root, load_run=train_cfg.runner.load_run, checkpoint=train_cfg.runner.checkpoint)
             print(f"Loading model from: {resume_path}")
             runner.load(resume_path)
         return runner, train_cfg
 
 # make global task registry
+# 创建全局任务注册表
 task_registry = TaskRegistry()
