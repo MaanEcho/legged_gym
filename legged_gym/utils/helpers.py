@@ -1,32 +1,6 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: BSD-3-Clause
-# 
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# Copyright (c) 2021 ETH Zurich, Nikita Rudin
+"""
+在Python项目中，helpers.py 文件通常用于封装一系列辅助函数或者通用工具方法。这个文件的作用是提供一些跨模块使用的功能，使得代码更加模块化和可重用。helpers.py（或者类似命名如 utils.py, common.py 等）可以包含各种类型的辅助功能，包括：数据处理函数，文件操作，字符串处理，网络请求，日志记录，异常处理，装饰器，数学计算，类型检查，环境检测等。
+"""
 
 import os
 import copy
@@ -39,15 +13,27 @@ from isaacgym import gymutil
 from legged_gym import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
 
 def class_to_dict(obj) -> dict:
-    if not  hasattr(obj,"__dict__"):
+    """
+    类型转换，将类转换为字典
+    （可能是在整个项目的初始阶段使用）
+    """
+    if not hasattr(obj,"__dict__"):
+    # 检查对象 obj 是否含有 __dict__ 属性，判断对象 obj 是否是需要处理的对象
+    # 如果对象 obj 没有 __dict__ 属性，那么通常意味着 obj 不是一个自定义类的实例，或者 obj 是一个内置类型的实例（如 int、str 等），它们通常没有 __dict__ 属性。
         return obj
-    result = {}
+    result = {} 
+    # 最终要返回的字典
     for key in dir(obj):
+    # 遍历对象 obj 的所有属性和方法的名称
         if key.startswith("_"):
+        # 这句代码的功能是过滤掉那些以 _ 开头的键或属性名，确保在处理对象或字典时，不会处理这些通常被视为“私有”的属性或方法。这样可以避免潜在的错误或不希望的行为，特别是在将对象转换为字典或将字典转换为对象时。
+        # startswith():: 这是一个字符串方法，用于检查字符串是否以指定的前缀开头。
             continue
         element = []
         val = getattr(obj, key)
+        # 从对象 obj 中获取名为 key 的属性的值，并将其赋值给变量 val
         if isinstance(val, list):
+        # 检查变量 val 是否是列表类型
             for item in val:
                 element.append(class_to_dict(item))
         else:
@@ -56,32 +42,51 @@ def class_to_dict(obj) -> dict:
     return result
 
 def update_class_from_dict(obj, dict):
+    """
+    这段代码的主要功能是从一个字典中更新一个对象的属性。具体来说，它遍历字典中的每个键值对，尝试将键对应的值赋给对象的相应属性。如果字典中的值本身是一个字典，它会递归地更新对象的子属性。
+    （可能是在整个项目的最后阶段使用）
+    """
     for key, val in dict.items():
+    # 遍历字典中的每个键值对
         attr = getattr(obj, key, None)
+        # 这行代码使用 getattr 函数尝试从对象 obj 中获取名为 key 的属性。如果 obj 中不存在这个属性，则返回 None。
         if isinstance(attr, type):
+        # 检查 attr 是否是一个类型（即类）。
+        # 如果是，则递归调用 update_class_from_dict 函数，将 attr 作为新的对象，val 作为新的字典进行更新。如果 attr 不是类型，则直接使用 setattr 函数将 obj 的 key 属性设置为 val。
             update_class_from_dict(attr, val)
         else:
             setattr(obj, key, val)
     return
 
 def set_seed(seed):
+    """设置随机种子"""
     if seed == -1:
         seed = np.random.randint(0, 10000)
     print("Setting seed: {}".format(seed))
     
     random.seed(seed)
+    # 设置 Python 内置随机数生成器的种子。设置种子后，使用 random 模块生成的随机数将是确定性的，即在相同的种子下，生成的随机数序列将是相同的。
     np.random.seed(seed)
+    # 设置 NumPy 随机数生成器的种子。设置种子后，使用 numpy 生成的随机数将是确定性的。
     torch.manual_seed(seed)
+    # 设置 PyTorch 随机数生成器的种子。设置种子后，使用 PyTorch 生成的随机数将是确定性的。
     os.environ['PYTHONHASHSEED'] = str(seed)
+    # 设置 Python 的哈希种子。设置 PYTHONHASHSEED 环境变量可以确保哈希值的计算是确定性的。
     torch.cuda.manual_seed(seed)
+    # 设置当前 CUDA 设备的随机数生成器的种子。这确保了在 GPU 上运行的 PyTorch 代码生成的随机数是确定性的。
     torch.cuda.manual_seed_all(seed)
+    # 设置所有 CUDA 设备的随机数生成器的种子。这确保了所有 GPU 生成的随机数是确定性的。
 
 def parse_sim_params(args, cfg):
+    """解析仿真参数"""
     # code from Isaac Gym Preview 2
+    # 代码来自Isaac Gym Preview 2
     # initialize sim params
+    # 初始化仿真参数
     sim_params = gymapi.SimParams()
 
     # set some values from args
+    # 从args（命令行参数？）中设置一些值
     if args.physics_engine == gymapi.SIM_FLEX:
         if args.device != "cpu":
             print("WARNING: Using Flex with GPU instead of PHYSX!")
@@ -91,19 +96,24 @@ def parse_sim_params(args, cfg):
     sim_params.use_gpu_pipeline = args.use_gpu_pipeline
 
     # if sim options are provided in cfg, parse them and update/override above:
+    # 如果在 cfg 中提供了仿真选项，则解析它们并更新/覆盖以上设置。
     if "sim" in cfg:
         gymutil.parse_sim_config(cfg["sim"], sim_params)
 
     # Override num_threads if passed on the command line
+    # 如果在命令行上提供了 num_threads，则覆盖默认值。
     if args.physics_engine == gymapi.SIM_PHYSX and args.num_threads > 0:
         sim_params.physx.num_threads = args.num_threads
 
     return sim_params
 
 def get_load_path(root, load_run=-1, checkpoint=-1):
+    """确定加载模型的路径"""
     try:
         runs = os.listdir(root)
-        #TODO sort by date to handle change of month
+        # 这段代码的主要功能是列出指定目录 root 中的所有文件和子目录，并将结果存储在变量 runs 中。具体来说，os.listdir(root) 函数会返回一个包含目录 root 中所有文件和子目录名称的列表，而 runs 变量则用于存储这个列表。
+        # TODO: sort by date to handle change of month
+        # TODO: 按日期排序以处理月份变更。
         runs.sort()
         if 'exported' in runs: runs.remove('exported')
         last_run = os.path.join(root, runs[-1])
@@ -119,15 +129,18 @@ def get_load_path(root, load_run=-1, checkpoint=-1):
         models.sort(key=lambda m: '{0:0>15}'.format(m))
         model = models[-1]
     else:
-        model = "model_{}.pt".format(checkpoint) 
+        model = "model_{}.pt".format(checkpoint)
 
     load_path = os.path.join(load_run, model)
     return load_path
 
 def update_cfg_from_args(env_cfg, cfg_train, args):
+    """从args(命令行参数？)中更新配置"""
     # seed
+    # 设置随机种子
     if env_cfg is not None:
         # num envs
+        # 环境数量
         if args.num_envs is not None:
             env_cfg.env.num_envs = args.num_envs
     if cfg_train is not None:
@@ -150,6 +163,7 @@ def update_cfg_from_args(env_cfg, cfg_train, args):
     return env_cfg, cfg_train
 
 def get_args():
+    """获取参数"""
     custom_parameters = [
         {"name": "--task", "type": str, "default": "anymal_c_flat", "help": "Resume training or start testing from a checkpoint. Overrides config file if provided."},
         {"name": "--resume", "action": "store_true", "default": False,  "help": "Resume training from a checkpoint"},
@@ -160,17 +174,22 @@ def get_args():
         
         {"name": "--headless", "action": "store_true", "default": False, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
+        # 可以使用Horovod进行多GPU训练
         {"name": "--rl_device", "type": str, "default": "cuda:0", "help": 'Device used by the RL algorithm, (cpu, gpu, cuda:0, cuda:1 etc..)'},
         {"name": "--num_envs", "type": int, "help": "Number of environments to create. Overrides config file if provided."},
         {"name": "--seed", "type": int, "help": "Random seed. Overrides config file if provided."},
         {"name": "--max_iterations", "type": int, "help": "Maximum number of training iterations. Overrides config file if provided."},
     ]
+    # 自定义参数
+
     # parse arguments
+    # 解析参数
     args = gymutil.parse_arguments(
         description="RL Policy",
         custom_parameters=custom_parameters)
 
     # name allignment
+    # 名称对齐
     args.sim_device_id = args.compute_device_id
     args.sim_device = args.sim_device_type
     if args.sim_device=='cuda':
@@ -178,12 +197,20 @@ def get_args():
     return args
 
 def export_policy_as_jit(actor_critic, path):
+    """
+    导出策略为JIT模型
+    具体来说：
+    如果 actor_critic 对象包含 memory_a 属性（假设是 LSTM 模型），则使用 PolicyExporterLSTM 类来处理并导出模型。
+    如果 actor_critic 对象不包含 memory_a 属性，则直接将 actor_critic.actor 模型转换为 JIT 脚本模块并保存。
+    """
     if hasattr(actor_critic, 'memory_a'):
         # assumes LSTM: TODO add GRU
+        # 假设是LSTM: TODO: 添加GRU
         exporter = PolicyExporterLSTM(actor_critic)
         exporter.export(path)
     else: 
         os.makedirs(path, exist_ok=True)
+        # 这句代码的主要功能是创建目录，确保指定的目录存在。如果目录不存在，它会创建这个目录及其所有必要的中间目录。如果目录已经存在，它不会引发错误，而是会静默地忽略这个操作。
         path = os.path.join(path, 'policy_1.pt')
         model = copy.deepcopy(actor_critic.actor).to('cpu')
         traced_script_module = torch.jit.script(model)
@@ -217,5 +244,3 @@ class PolicyExporterLSTM(torch.nn.Module):
         self.to('cpu')
         traced_script_module = torch.jit.script(self)
         traced_script_module.save(path)
-
-    
