@@ -117,10 +117,10 @@ class TaskRegistry():
         
         参数：
             env (isaacgym.VecTaskPython): 训练环境（TODO：从算法内部移除）
-            name (string, optional): 注册环境的名称。如果为None，则使用配置文件。默认值为None。
-            args (Args, optional): Isaac Gym命令行参数。如果为None，则调用get_args()。默认值为None。
-            train_cfg (Dict, optional): 训练配置文件。如果为None，则使用'name'获取配置文件。默认值为None。
-            log_root (str, optional): Tensorboard日志目录。设置为'None'以避免日志记录（例如在测试时）。日志将保存在<log_root>/<date_time>_<run_name>中。默认值为"default"=<path_to_LEGGED_GYM>/logs/<experiment_name>。
+            name (string, 可选): 注册环境的名称。如果为None，则使用配置文件。默认值为None。
+            args (Args, 可选): Isaac Gym命令行参数。如果为None，则调用get_args()。默认值为None。
+            train_cfg (Dict, 可选): 训练配置文件。如果为None，则使用'name'获取配置文件。默认值为None。
+            log_root (str, 可选): Tensorboard日志目录。设置为'None'以避免日志记录（例如在测试时）。日志将保存在<log_root>/<date_time>_<run_name>中。默认值为"default"=<path_to_LEGGED_GYM>/logs/<experiment_name>。
 
         异常：
             ValueError: 如果'name'和'train_cfg'都未提供

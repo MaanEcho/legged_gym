@@ -7,48 +7,67 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg
 
 class Terrain:
     def __init__(self, cfg: LeggedRobotCfg.terrain, num_robots) -> None:
-
         self.cfg = cfg
+        # 环境地形配置
         self.num_robots = num_robots
+        # 机器人的数量
         self.type = cfg.mesh_type
+        # 地形类型
         if self.type in ["none", 'plane']:
             return
         self.env_length = cfg.terrain_length
+        # 环境长度
         self.env_width = cfg.terrain_width
+        # 环境宽度
         self.proportions = [np.sum(cfg.terrain_proportions[:i+1]) for i in range(len(cfg.terrain_proportions))]
+        # 地形比例
 
         self.cfg.num_sub_terrains = cfg.num_rows * cfg.num_cols
+        # 地形分割数量
         self.env_origins = np.zeros((cfg.num_rows, cfg.num_cols, 3))
+        # 环境原点？
 
         self.width_per_env_pixels = int(self.env_width / cfg.horizontal_scale)
+        # 宽度每环境像素？
         self.length_per_env_pixels = int(self.env_length / cfg.horizontal_scale)
+        # 长度每环境像素？
 
         self.border = int(cfg.border_size/self.cfg.horizontal_scale)
+        # 边界？
         self.tot_cols = int(cfg.num_cols * self.width_per_env_pixels) + 2 * self.border
+        # 总列？
         self.tot_rows = int(cfg.num_rows * self.length_per_env_pixels) + 2 * self.border
+        # 总行？
 
         self.height_field_raw = np.zeros((self.tot_rows , self.tot_cols), dtype=np.int16)
         if cfg.curriculum:
+        # 是否是课程学习模式
             self.curiculum()
         elif cfg.selected:
+        # 是否选定地形
             self.selected_terrain()
-        else:    
+        else:
+        # 随机化地形
             self.randomized_terrain()   
         
         self.heightsamples = self.height_field_raw
         if self.type=="trimesh":
-            self.vertices, self.triangles = terrain_utils.convert_heightfield_to_trimesh(   self.height_field_raw,
-                                                                                            self.cfg.horizontal_scale,
-                                                                                            self.cfg.vertical_scale,
-                                                                                            self.cfg.slope_treshold)
+            self.vertices, self.triangles = terrain_utils.convert_heightfield_to_trimesh(self.height_field_raw,
+                                                                                         self.cfg.horizontal_scale,
+                                                                                         self.cfg.vertical_scale,
+                                                                                         self.cfg.slope_treshold)
     
     def randomized_terrain(self):
         for k in range(self.cfg.num_sub_terrains):
             # Env coordinates in the world
+            # 世界坐标系中的环境坐标
             (i, j) = np.unravel_index(k, (self.cfg.num_rows, self.cfg.num_cols))
+            # 使用 np.unravel_index 函数将线性索引 k 转换为二维索引 (i, j)，其中 i 和 j 分别表示行和列的索引。
 
             choice = np.random.uniform(0, 1)
+            # 生成一个在 [0, 1) 区间内服从均匀分布的随机数，并将其存储在变量 choice 中。
             difficulty = np.random.choice([0.5, 0.75, 0.9])
+            # 从给定的列表 [0.5, 0.75, 0.9] 中随机选择一个元素，并将选择的结果存储在变量 difficulty 中。
             terrain = self.make_terrain(choice, difficulty)
             self.add_terrain_to_map(terrain, i, j)
         
@@ -65,30 +84,39 @@ class Terrain:
         terrain_type = self.cfg.terrain_kwargs.pop('type')
         for k in range(self.cfg.num_sub_terrains):
             # Env coordinates in the world
+            # 世界坐标系中的环境坐标
             (i, j) = np.unravel_index(k, (self.cfg.num_rows, self.cfg.num_cols))
+            # 使用 np.unravel_index 函数将线性索引 k 转换为二维索引 (i, j)，其中 i 和 j 分别表示行和列的索引。
 
             terrain = terrain_utils.SubTerrain("terrain",
-                              width=self.width_per_env_pixels,
-                              length=self.width_per_env_pixels,
-                              vertical_scale=self.vertical_scale,
-                              horizontal_scale=self.horizontal_scale)
+                                              width=self.width_per_env_pixels,
+                                              length=self.width_per_env_pixels,
+                                              vertical_scale=self.cfg.vertical_scale,
+                                              horizontal_scale=self.horizontal_scale)
 
             eval(terrain_type)(terrain, **self.cfg.terrain_kwargs.terrain_kwargs)
+            # 这行代码使用 eval 函数动态调用地形生成函数。eval(terrain_type) 会将字符串 terrain_type 转换为对应的函数名，然后调用该函数并传入地形对象和地形参数。
             self.add_terrain_to_map(terrain, i, j)
     
     def make_terrain(self, choice, difficulty):
-        terrain = terrain_utils.SubTerrain(   "terrain",
-                                width=self.width_per_env_pixels,
-                                length=self.width_per_env_pixels,
-                                vertical_scale=self.cfg.vertical_scale,
-                                horizontal_scale=self.cfg.horizontal_scale)
+        terrain = terrain_utils.SubTerrain("terrain",
+                                           width=self.width_per_env_pixels,
+                                           length=self.width_per_env_pixels,
+                                           vertical_scale=self.cfg.vertical_scale,
+                                           horizontal_scale=self.cfg.horizontal_scale)
         slope = difficulty * 0.4
+        # 坡度
         step_height = 0.05 + 0.18 * difficulty
+        # 步高？
         discrete_obstacles_height = 0.05 + difficulty * 0.2
+        # 离散障碍物高度
         stepping_stones_size = 1.5 * (1.05 - difficulty)
+        # 步石大小
         stone_distance = 0.05 if difficulty==0 else 0.1
+        # 步石间距
         gap_size = 1. * difficulty
         pit_depth = 1. * difficulty
+        # 坑的深度
         if choice < self.proportions[0]:
             if choice < self.proportions[0]/ 2:
                 slope *= -1
@@ -118,6 +146,7 @@ class Terrain:
         i = row
         j = col
         # map coordinate system
+        # 地图坐标系
         start_x = self.border + i * self.length_per_env_pixels
         end_x = self.border + (i + 1) * self.length_per_env_pixels
         start_y = self.border + j * self.width_per_env_pixels
