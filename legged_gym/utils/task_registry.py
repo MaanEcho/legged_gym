@@ -12,31 +12,27 @@ from .helpers import get_args, update_cfg_from_args, class_to_dict, get_load_pat
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
 class TaskRegistry():
-    def __init__(self):
-        self.task_classes = {}
-        # 任务类别
-        self.env_cfgs = {}
-        # 环境配置
-        self.train_cfgs = {}
-        # 训练配置
+    def __init__(self): # √
+        self.task_classes = {}  # 任务类别
+        self.env_cfgs = {}   # 环境配置
+        self.train_cfgs = {}  # 训练配置
     
-    def register(self, name: str, task_class: VecEnv, env_cfg: LeggedRobotCfg, train_cfg: LeggedRobotCfgPPO):   # *
+    def register(self, name: str, task_class: VecEnv, env_cfg: LeggedRobotCfg, train_cfg: LeggedRobotCfgPPO):   # √
         self.task_classes[name] = task_class
         self.env_cfgs[name] = env_cfg
         self.train_cfgs[name] = train_cfg
     
-    def get_task_class(self, name: str) -> VecEnv:
+    def get_task_class(self, name: str) -> VecEnv:  # √
         return self.task_classes[name]
     
-    def get_cfgs(self, name) -> Tuple[LeggedRobotCfg, LeggedRobotCfgPPO]:
+    def get_cfgs(self, name) -> Tuple[LeggedRobotCfg, LeggedRobotCfgPPO]:   # √
         train_cfg = self.train_cfgs[name]
         env_cfg = self.env_cfgs[name]
         # copy seed
-        # 拷贝随机种子
         env_cfg.seed = train_cfg.seed
         return env_cfg, train_cfg
     
-    def make_env(self, name, args=None, env_cfg=None) -> Tuple[VecEnv, LeggedRobotCfg]:
+    def make_env(self, name, args=None, env_cfg=None) -> Tuple[VecEnv, LeggedRobotCfg]: # √
         """ Creates an environment either from a registered name or from the provided config file.
 
         Args:
@@ -51,40 +47,21 @@ class TaskRegistry():
             isaacgym.VecTaskPython: The created environment
             Dict: the corresponding config file
         """
-        """ 从一个已注册的名称或提供的配置文件创建一个环境。
-        
-        参数：
-            name (string): 注册环境的名称。
-            args (Args, optional): Isaac Gym命令行参数。如果为None，则调用get_args()。默认值为None。
-            env_cfg (Dict, optional): 用于覆盖注册配置的环境配置文件。默认值为None。
-
-        异常：
-            ValueError: 如果没有注册的环境与'name'对应
-
-        返回：
-            isaacgym.VecTaskPython: 创建的环境
-            Dict: 对应的配置文件
-        """
         # if no args passed get command line arguments
-        # 如果没有传递args，则获取命令行参数
         if args is None:
             args = get_args()
         # check if there is a registered env with that name
-        # 检查是否有注册的环境与该名称对应
         if name in self.task_classes:
             task_class = self.get_task_class(name)
         else:
             raise ValueError(f"Task with name: {name} was not registered")
         if env_cfg is None:
             # load config files
-            # 加载配置文件
             env_cfg, _ = self.get_cfgs(name)
         # override cfg from args (if specified)
-        # 从args（等价于命令行参数？）中覆盖配置（如果指定了）
         env_cfg, _ = update_cfg_from_args(env_cfg, None, args)
         set_seed(env_cfg.seed)
         # parse sim params (convert to dict first)
-        # 解析模拟参数（首先转换为字典）
         sim_params = {"sim": class_to_dict(env_cfg.sim)}
         sim_params = parse_sim_params(args, sim_params)
         env = task_class(   cfg=env_cfg,
@@ -171,5 +148,4 @@ class TaskRegistry():
         return runner, train_cfg
 
 # make global task registry
-# 创建全局任务注册表
 task_registry = TaskRegistry()

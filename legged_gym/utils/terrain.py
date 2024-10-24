@@ -6,48 +6,32 @@ from isaacgym import terrain_utils
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg
 
 class Terrain:
-    def __init__(self, cfg: LeggedRobotCfg.terrain, num_robots) -> None:
-        self.cfg = cfg
-        # 环境地形配置
-        self.num_robots = num_robots
-        # 机器人的数量
-        self.type = cfg.mesh_type
-        # 地形类型
+    def __init__(self, cfg: LeggedRobotCfg.terrain, num_robots) -> None:    # 粗略看过一遍，但没有专门花心思看
+        self.cfg = cfg  # 地形参数
+        self.num_robots = num_robots    # 机器人数量
+        self.type = cfg.mesh_type   # 地形类型
         if self.type in ["none", 'plane']:
             return
-        self.env_length = cfg.terrain_length
-        # 环境长度
-        self.env_width = cfg.terrain_width
-        # 环境宽度
+        self.env_length = cfg.terrain_length    # 地形长度
+        self.env_width = cfg.terrain_width  # 地形宽度
         self.proportions = [np.sum(cfg.terrain_proportions[:i+1]) for i in range(len(cfg.terrain_proportions))]
-        # 地形比例
 
-        self.cfg.num_sub_terrains = cfg.num_rows * cfg.num_cols
-        # 地形分割数量
-        self.env_origins = np.zeros((cfg.num_rows, cfg.num_cols, 3))
-        # 环境原点？
+        self.cfg.num_sub_terrains = cfg.num_rows * cfg.num_cols # 子地形数量
+        self.env_origins = np.zeros((cfg.num_rows, cfg.num_cols, 3))    # 子地形原点
 
-        self.width_per_env_pixels = int(self.env_width / cfg.horizontal_scale)
-        # 宽度每环境像素？
-        self.length_per_env_pixels = int(self.env_length / cfg.horizontal_scale)
-        # 长度每环境像素？
+        self.width_per_env_pixels = int(self.env_width / cfg.horizontal_scale)  # 每个环境的宽度（像素）
+        self.length_per_env_pixels = int(self.env_length / cfg.horizontal_scale)    # 每个环境的长度（像素）
 
-        self.border = int(cfg.border_size/self.cfg.horizontal_scale)
-        # 边界？
-        self.tot_cols = int(cfg.num_cols * self.width_per_env_pixels) + 2 * self.border
-        # 总列？
-        self.tot_rows = int(cfg.num_rows * self.length_per_env_pixels) + 2 * self.border
-        # 总行？
+        self.border = int(cfg.border_size/self.cfg.horizontal_scale)    # 边界宽度（像素）
+        self.tot_cols = int(cfg.num_cols * self.width_per_env_pixels) + 2 * self.border # 总列数
+        self.tot_rows = int(cfg.num_rows * self.length_per_env_pixels) + 2 * self.border    # 总行数
 
         self.height_field_raw = np.zeros((self.tot_rows , self.tot_cols), dtype=np.int16)
         if cfg.curriculum:
-        # 是否是课程学习模式
             self.curiculum()
         elif cfg.selected:
-        # 是否选定地形
             self.selected_terrain()
         else:
-        # 随机化地形
             self.randomized_terrain()   
         
         self.heightsamples = self.height_field_raw
@@ -57,21 +41,17 @@ class Terrain:
                                                                                          self.cfg.vertical_scale,
                                                                                          self.cfg.slope_treshold)
     
-    def randomized_terrain(self):
+    def randomized_terrain(self):   # 粗略看过一遍，但没有专门花心思看
         for k in range(self.cfg.num_sub_terrains):
             # Env coordinates in the world
-            # 世界坐标系中的环境坐标
             (i, j) = np.unravel_index(k, (self.cfg.num_rows, self.cfg.num_cols))
-            # 使用 np.unravel_index 函数将线性索引 k 转换为二维索引 (i, j)，其中 i 和 j 分别表示行和列的索引。
 
             choice = np.random.uniform(0, 1)
-            # 生成一个在 [0, 1) 区间内服从均匀分布的随机数，并将其存储在变量 choice 中。
             difficulty = np.random.choice([0.5, 0.75, 0.9])
-            # 从给定的列表 [0.5, 0.75, 0.9] 中随机选择一个元素，并将选择的结果存储在变量 difficulty 中。
             terrain = self.make_terrain(choice, difficulty)
             self.add_terrain_to_map(terrain, i, j)
         
-    def curiculum(self):
+    def curiculum(self):    # 粗略看过一遍，但没有专门花心思看
         for j in range(self.cfg.num_cols):
             for i in range(self.cfg.num_rows):
                 difficulty = i / self.cfg.num_rows
@@ -80,13 +60,11 @@ class Terrain:
                 terrain = self.make_terrain(choice, difficulty)
                 self.add_terrain_to_map(terrain, i, j)
 
-    def selected_terrain(self):
+    def selected_terrain(self): # 粗略看过一遍，但没有专门花心思看
         terrain_type = self.cfg.terrain_kwargs.pop('type')
         for k in range(self.cfg.num_sub_terrains):
             # Env coordinates in the world
-            # 世界坐标系中的环境坐标
             (i, j) = np.unravel_index(k, (self.cfg.num_rows, self.cfg.num_cols))
-            # 使用 np.unravel_index 函数将线性索引 k 转换为二维索引 (i, j)，其中 i 和 j 分别表示行和列的索引。
 
             terrain = terrain_utils.SubTerrain("terrain",
                                               width=self.width_per_env_pixels,
@@ -95,28 +73,21 @@ class Terrain:
                                               horizontal_scale=self.horizontal_scale)
 
             eval(terrain_type)(terrain, **self.cfg.terrain_kwargs.terrain_kwargs)
-            # 这行代码使用 eval 函数动态调用地形生成函数。eval(terrain_type) 会将字符串 terrain_type 转换为对应的函数名，然后调用该函数并传入地形对象和地形参数。
             self.add_terrain_to_map(terrain, i, j)
     
-    def make_terrain(self, choice, difficulty):
+    def make_terrain(self, choice, difficulty): # 粗略看过一遍，但没有专门花心思看
         terrain = terrain_utils.SubTerrain("terrain",
                                            width=self.width_per_env_pixels,
                                            length=self.width_per_env_pixels,
                                            vertical_scale=self.cfg.vertical_scale,
                                            horizontal_scale=self.cfg.horizontal_scale)
-        slope = difficulty * 0.4
-        # 坡度
-        step_height = 0.05 + 0.18 * difficulty
-        # 步高？
-        discrete_obstacles_height = 0.05 + difficulty * 0.2
-        # 离散障碍物高度
-        stepping_stones_size = 1.5 * (1.05 - difficulty)
-        # 步石大小
-        stone_distance = 0.05 if difficulty==0 else 0.1
-        # 步石间距
-        gap_size = 1. * difficulty
-        pit_depth = 1. * difficulty
-        # 坑的深度
+        slope = difficulty * 0.4    # 坡度
+        step_height = 0.05 + 0.18 * difficulty  # 台阶高度（不确定）
+        discrete_obstacles_height = 0.05 + difficulty * 0.2 # 离散障碍物高度
+        stepping_stones_size = 1.5 * (1.05 - difficulty)    # 台阶大小（不确定）
+        stone_distance = 0.05 if difficulty==0 else 0.1 # 石头间距
+        gap_size = 1. * difficulty  # 缝隙大小
+        pit_depth = 1. * difficulty # 坑的深度
         if choice < self.proportions[0]:
             if choice < self.proportions[0]/ 2:
                 slope *= -1
@@ -142,11 +113,10 @@ class Terrain:
         
         return terrain
 
-    def add_terrain_to_map(self, terrain, row, col):
+    def add_terrain_to_map(self, terrain, row, col):    # 粗略看过一遍，但没有专门花心思看
         i = row
         j = col
         # map coordinate system
-        # 地图坐标系
         start_x = self.border + i * self.length_per_env_pixels
         end_x = self.border + (i + 1) * self.length_per_env_pixels
         start_y = self.border + j * self.width_per_env_pixels
@@ -162,7 +132,7 @@ class Terrain:
         env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2])*terrain.vertical_scale
         self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
 
-def gap_terrain(terrain, gap_size, platform_size=1.):
+def gap_terrain(terrain, gap_size, platform_size=1.):   # 粗略看过一遍，但没有专门花心思看
     gap_size = int(gap_size / terrain.horizontal_scale)
     platform_size = int(platform_size / terrain.horizontal_scale)
 
@@ -176,7 +146,7 @@ def gap_terrain(terrain, gap_size, platform_size=1.):
     terrain.height_field_raw[center_x-x2 : center_x + x2, center_y-y2 : center_y + y2] = -1000
     terrain.height_field_raw[center_x-x1 : center_x + x1, center_y-y1 : center_y + y1] = 0
 
-def pit_terrain(terrain, depth, platform_size=1.):
+def pit_terrain(terrain, depth, platform_size=1.):  # 粗略看过一遍，但没有专门花心思看
     depth = int(depth / terrain.vertical_scale)
     platform_size = int(platform_size / terrain.horizontal_scale / 2)
     x1 = terrain.length // 2 - platform_size

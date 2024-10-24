@@ -12,28 +12,19 @@ from isaacgym import gymutil
 
 from legged_gym import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
 
-def class_to_dict(obj) -> dict:
+def class_to_dict(obj) -> dict: # √
     """
-    类型转换，将类转换为字典
-    （可能是在整个项目的初始阶段使用）
+    类型转换，将一个类实例转换为字典表示
     """
     if not hasattr(obj,"__dict__"):
-    # 检查对象 obj 是否含有 __dict__ 属性，判断对象 obj 是否是需要处理的对象
-    # 如果对象 obj 没有 __dict__ 属性，那么通常意味着 obj 不是一个自定义类的实例，或者 obj 是一个内置类型的实例（如 int、str 等），它们通常没有 __dict__ 属性。
         return obj
     result = {} 
-    # 最终要返回的字典
     for key in dir(obj):
-    # 遍历对象 obj 的所有属性和方法的名称
         if key.startswith("_"):
-        # 这句代码的功能是过滤掉那些以 _ 开头的键或属性名，确保在处理对象或字典时，不会处理这些通常被视为“私有”的属性或方法。这样可以避免潜在的错误或不希望的行为，特别是在将对象转换为字典或将字典转换为对象时。
-        # startswith():: 这是一个字符串方法，用于检查字符串是否以指定的前缀开头。
             continue
         element = []
         val = getattr(obj, key)
-        # 从对象 obj 中获取名为 key 的属性的值，并将其赋值给变量 val
         if isinstance(val, list):
-        # 检查变量 val 是否是列表类型
             for item in val:
                 element.append(class_to_dict(item))
         else:
@@ -58,18 +49,15 @@ def update_class_from_dict(obj, dict):
             setattr(obj, key, val)
     return
 
-def set_seed(seed):
+def set_seed(seed): # √
     """设置随机种子"""
     if seed == -1:
         seed = np.random.randint(0, 10000)
     print("Setting seed: {}".format(seed))
     
-    random.seed(seed)
-    # 设置 Python 内置随机数生成器的种子。设置种子后，使用 random 模块生成的随机数将是确定性的，即在相同的种子下，生成的随机数序列将是相同的。
-    np.random.seed(seed)
-    # 设置 NumPy 随机数生成器的种子。设置种子后，使用 numpy 生成的随机数将是确定性的。
-    torch.manual_seed(seed)
-    # 设置 PyTorch 随机数生成器的种子。设置种子后，使用 PyTorch 生成的随机数将是确定性的。
+    random.seed(seed)   # 设置 Python 内置随机数生成器的种子
+    np.random.seed(seed)  # 设置 NumPy 随机数生成器的种子。
+    torch.manual_seed(seed)  # 设置 PyTorch 随机数生成器的种子
     os.environ['PYTHONHASHSEED'] = str(seed)
     # 设置 Python 的哈希种子。设置 PYTHONHASHSEED 环境变量可以确保哈希值的计算是确定性的。
     torch.cuda.manual_seed(seed)
@@ -77,16 +65,13 @@ def set_seed(seed):
     torch.cuda.manual_seed_all(seed)
     # 设置所有 CUDA 设备的随机数生成器的种子。这确保了所有 GPU 生成的随机数是确定性的。
 
-def parse_sim_params(args, cfg):
+def parse_sim_params(args, cfg):    # √
     """解析仿真参数"""
     # code from Isaac Gym Preview 2
-    # 代码来自Isaac Gym Preview 2
     # initialize sim params
-    # 初始化仿真参数
     sim_params = gymapi.SimParams()
 
     # set some values from args
-    # 从args（命令行参数？）中设置一些值
     if args.physics_engine == gymapi.SIM_FLEX:
         if args.device != "cpu":
             print("WARNING: Using Flex with GPU instead of PHYSX!")
@@ -96,12 +81,10 @@ def parse_sim_params(args, cfg):
     sim_params.use_gpu_pipeline = args.use_gpu_pipeline
 
     # if sim options are provided in cfg, parse them and update/override above:
-    # 如果在 cfg 中提供了仿真选项，则解析它们并更新/覆盖以上设置。
     if "sim" in cfg:
         gymutil.parse_sim_config(cfg["sim"], sim_params)
 
     # Override num_threads if passed on the command line
-    # 如果在命令行上提供了 num_threads，则覆盖默认值。
     if args.physics_engine == gymapi.SIM_PHYSX and args.num_threads > 0:
         sim_params.physx.num_threads = args.num_threads
 
@@ -135,9 +118,7 @@ def get_load_path(root, load_run=-1, checkpoint=-1):
     return load_path
 
 def update_cfg_from_args(env_cfg, cfg_train, args):
-    """从args(命令行参数？)中更新配置"""
     # seed
-    # 设置随机种子
     if env_cfg is not None:
         # num envs
         # 环境数量
@@ -162,34 +143,33 @@ def update_cfg_from_args(env_cfg, cfg_train, args):
 
     return env_cfg, cfg_train
 
-def get_args():
+def get_args(): # √
     """获取参数"""
+    #----------custom parameters----------#
     custom_parameters = [
         {"name": "--task", "type": str, "default": "anymal_c_flat", "help": "Resume training or start testing from a checkpoint. Overrides config file if provided."},
-        {"name": "--resume", "action": "store_true", "default": False,  "help": "Resume training from a checkpoint"},
+        {"name": "--resume", "action": "store_true", "default": False, "help": "Resume training from a checkpoint"},
         {"name": "--experiment_name", "type": str,  "help": "Name of the experiment to run or load. Overrides config file if provided."},
         {"name": "--run_name", "type": str,  "help": "Name of the run. Overrides config file if provided."},
         {"name": "--load_run", "type": str,  "help": "Name of the run to load when resume=True. If -1: will load the last run. Overrides config file if provided."},
         {"name": "--checkpoint", "type": int,  "help": "Saved model checkpoint number. If -1: will load the last checkpoint. Overrides config file if provided."},
-        
         {"name": "--headless", "action": "store_true", "default": False, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
-        # 可以使用Horovod进行多GPU训练
         {"name": "--rl_device", "type": str, "default": "cuda:0", "help": 'Device used by the RL algorithm, (cpu, gpu, cuda:0, cuda:1 etc..)'},
         {"name": "--num_envs", "type": int, "help": "Number of environments to create. Overrides config file if provided."},
         {"name": "--seed", "type": int, "help": "Random seed. Overrides config file if provided."},
         {"name": "--max_iterations", "type": int, "help": "Maximum number of training iterations. Overrides config file if provided."},
     ]
-    # 自定义参数
+    #----------custom parameters----------#
 
     # parse arguments
-    # 解析参数
     args = gymutil.parse_arguments(
         description="RL Policy",
+        # headless = False,
+        # no_graphics = False,
         custom_parameters=custom_parameters)
 
     # name allignment
-    # 名称对齐
     args.sim_device_id = args.compute_device_id
     args.sim_device = args.sim_device_type
     if args.sim_device=='cuda':
